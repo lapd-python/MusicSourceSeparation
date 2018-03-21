@@ -12,7 +12,8 @@ from torch.autograd import Variable
 from modules import cls_sparse_skip_filt as s_s_net
 from losses import loss_functions
 from helpers import iterative_inference as it_infer
-
+import torch.nn as nn
+import os
 
 def main(training, apply_sparsity):
     """
@@ -21,9 +22,9 @@ def main(training, apply_sparsity):
     # Reproducible results
     np.random.seed(218)
     torch.manual_seed(218)
-    torch.cuda.manual_seed(218)
+    # torch.cuda.manual_seed(218)
     # Torch model
-    torch.set_default_tensor_type('torch.cuda.FloatTensor')
+    torch.set_default_tensor_type('torch.FloatTensor')
 
     # Analysis
     wsz = 2049   # Window-size
@@ -65,18 +66,41 @@ def main(training, apply_sparsity):
         sp_decoder.cuda()
         source_enhancement.cuda()
 
+    for x in encoder.parameters():
+        # print(x.requires_grad)
+        x.require_grads = False
+    for x in decoder.parameters():
+        x.require_grads = False
+    for x in sp_decoder.parameters():
+        x.require_grads = False
+    for x in source_enhancement.parameters():
+        x.require_grads = False
+    source_enhancement.ffSe_enc = nn.Linear(N, N // 2)
+    source_enhancement.ffSe_dec = nn.Linear(N // 2, N)
+
+    # exit()
+    # # print(encoder)
+    # # print(decoder)
+    # # print(sp_decoder)
+    # print(source_enhancement.ffSe_dec)
+    # exit()
+
+
     # Defining objectives
     rec_criterion = loss_functions.kullback_leibler                 # Reconstruction criterion
 
-    optimizer = optim.Adam(list(encoder.parameters()) +
-                           list(decoder.parameters()) +
-                           list(sp_decoder.parameters()) +
-                           list(source_enhancement.parameters()),
+    # optimizer = optim.Adam(list(encoder.parameters()) +
+    #                        list(decoder.parameters()) +
+    #                        list(sp_decoder.parameters()) +
+    #                        list(source_enhancement.parameters()),
+    #                        lr=init_lr
+    #                        )
+    optimizer = optim.Adam(list(source_enhancement.parameters()),
                            lr=init_lr
                            )
 
     if training:
-        win_viz, winb_viz = visualize.init_visdom()
+        # win_viz, winb_viz = visualize.init_visdom()
         batch_loss = []
         # Over epochs
         batch_index = 0
@@ -84,24 +108,30 @@ def main(training, apply_sparsity):
             print('Epoch: ' + str(epoch+1))
             epoch_loss = []
             # Over the set of files
-            for index in range(totTrainFiles/numFilesPerTr):
+            for index in range(totTrainFiles//numFilesPerTr):
                 # Get Data
-                ms, vs = nnet_helpers.get_data(index+1, numFilesPerTr, wsz, Ns, hop, T, L, B)
-
+                ms, vs = nnet_helpers.get_data_shunit(index+1, numFilesPerTr, wsz, Ns, hop, T, L, B)
+                # print(ms.shape)
                 # Shuffle data
                 shf_indices = np.random.permutation(ms.shape[0])
                 ms = ms[shf_indices]
                 vs = vs[shf_indices]
-
+                # print(ms.shape)
                 # Over batches
-                for batch in tqdm(range(ms.shape[0]/B)):
+                for batch in tqdm(range(ms.shape[0]//B)):
                     # Mixture to Singing voice
+                    # print(ms[batch * B: (batch+1)*B, :, :].shape)
                     H_enc = encoder(ms[batch * B: (batch+1)*B, :, :])
+                    # print(H_enc.shape)
                     # Iterative inference
                     H_j_dec = it_infer.iterative_recurrent_inference(decoder, H_enc,
                                                                      criterion=None, tol=1e-3, max_iter=10)
+                    # print(H_j_dec.shape)
                     vs_hat_b = sp_decoder(H_j_dec, ms[batch * B: (batch+1)*B, :, :])[0]
+                    # print(vs_hat_b.shape)
                     vs_hat_b_filt = source_enhancement(vs_hat_b)
+                    # print(vs_hat_b_filt.shape)
+                    # exit()
 
                     # Loss
                     if torch.has_cudnn:
@@ -135,9 +165,9 @@ def main(training, apply_sparsity):
 
                         loss += sparsity_penalty
 
-                        winb_viz = visualize.viz.line(X=np.arange(batch_index, batch_index+1),
-                             Y=np.reshape(sparsity_penalty.data[0], (1,)),
-                             win=winb_viz, update='append')
+                        # winb_viz = visualize.viz.line(X=np.arange(batch_index, batch_index+1),
+                        #      Y=np.reshape(sparsity_penalty.data[0], (1,)),
+                        #      win=winb_viz, update='append')
 
                     optimizer.zero_grad()
 
@@ -148,10 +178,10 @@ def main(training, apply_sparsity):
                                                   list(source_enhancement.parameters()),
                                                   max_norm=mnorm, norm_type=2)
                     optimizer.step()
-                    # Update graphs
-                    win_viz = visualize.viz.line(X=np.arange(batch_index, batch_index+1),
-                                                 Y=np.reshape(batch_loss[batch_index], (1,)),
-                                                 win=win_viz, update='append')
+                    # # Update graphs
+                    # win_viz = visualize.viz.line(X=np.arange(batch_index, batch_index+1),
+                    #                              Y=np.reshape(batch_loss[batch_index], (1,)),
+                    #                              win=win_viz, update='append')
                     batch_index += 1
 
             if (epoch+1) % 40 == 0:
@@ -164,24 +194,25 @@ def main(training, apply_sparsity):
     else:
         print('-------  Loading pre-trained model   -------')
         print('-------  Loading inference weights  -------')
-        encoder.load_state_dict(torch.load('results/results_inference/torch_sps_encoder.pytorch'))
-        decoder.load_state_dict(torch.load('results/results_inference/torch_sps_decoder.pytorch'))
-        sp_decoder.load_state_dict(torch.load('results/results_inference/torch_sps_sp_decoder.pytorch'))
-        source_enhancement.load_state_dict(torch.load('results/results_inference/torch_sps_se.pytorch'))
+        encoder.load_state_dict(torch.load('results/results_inference/torch_sps_encoder.pytorch', map_location=lambda storage, loc: storage))
+        decoder.load_state_dict(torch.load('results/results_inference/torch_sps_decoder.pytorch', map_location=lambda storage, loc: storage))
+        sp_decoder.load_state_dict(torch.load('results/results_inference/torch_sps_sp_decoder.pytorch', map_location=lambda storage, loc: storage))
+        source_enhancement.load_state_dict(torch.load('results/results_inference/torch_sps_se.pytorch', map_location=lambda storage, loc: storage))
         print('-------------      Done        -------------')
 
     return encoder, decoder, sp_decoder, source_enhancement
 
 
 if __name__ == '__main__':
-    training = False         # Whether to train or test the trained model (requires the optimized parameters)
+    os.chdir('C:/Users/shunitha/PycharmProjects/mss/')
+    training = True         # Whether to train or test the trained model (requires the optimized parameters)
     apply_sparsity = True    # Whether to apply a sparse penalty or not
 
     sfiltnet = main(training, apply_sparsity)
 
-    #print('-------------     BSS-Eval     -------------')
-    #nnet_helpers.test_eval(sfiltnet, 16, 60, 4096, 10, 2049, 384)
-    #print('-------------       Done       -------------')
+    print('-------------     BSS-Eval     -------------')
+    nnet_helpers.test_eval(sfiltnet, 16, 60, 4096, 10, 2049, 384)
+    print('-------------       Done       -------------')
     print('-------------     DNN-Test     -------------')
     nnet_helpers.test_nnet(sfiltnet, 60, 10*2, 2049, 4096, 384, 16)
     print('-------------       Done       -------------')

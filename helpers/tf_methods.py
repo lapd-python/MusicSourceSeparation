@@ -51,8 +51,8 @@ class TimeFrequencyDecomposition:
         X = fft(fftbuffer)
 
         # Acquire magnitude and phase spectrum
-        magX = (np.abs(X[:hlfN]))
-        phsX = (np.angle(X[:hlfN]))
+        magX = (np.abs(X[:int(hlfN)]))
+        phsX = (np.angle(X[:int(hlfN)]))
 
         return magX, phsX
 
@@ -125,8 +125,8 @@ class TimeFrequencyDecomposition:
             w = w / np.sqrt(N)
 
         # Initialize storing matrix
-        xmX = np.zeros((len(x)/hop, N/2 + 1), dtype = np.float32)
-        xpX = np.zeros((len(x)/hop, N/2 + 1), dtype = np.float32)
+        xmX = np.zeros((len(x)//hop, N//2 + 1), dtype = np.float32)
+        xpX = np.zeros((len(x)//hop, N//2 + 1), dtype = np.float32)
 
         # Analysis Loop
         while pin <= pend:
@@ -164,9 +164,9 @@ class TimeFrequencyDecomposition:
         synw = hamming(wsz)/np.sqrt(N)
         synwProd = synw ** 2.
         synwProd.shape = (wsz, 1)
-        redundancy = wsz/hop
+        redundancy = wsz//hop
         env = np.zeros((wsz, 1))
-        for k in xrange(-redundancy, redundancy + 1):
+        for k in range(-redundancy, redundancy + 1):
             envInd = (hop*k)
             winInd = np.arange(1, wsz+1)
             envInd += winInd
@@ -255,7 +255,7 @@ class TimeFrequencyDecomposition:
         spX[0, :, :] = pX.T
         del mX, pX
 
-        for channel in xrange(1, M):
+        for channel in range(1, M):
             mX, pX = TimeFrequencyDecomposition.STFT(x[:, channel], w, N, hop)
             smX[channel, :, :] = mX.T
             spX[channel, :, :] = pX.T
@@ -290,7 +290,7 @@ class TimeFrequencyDecomposition:
         yout[:, 0] = y
         del y
 
-        for channel in xrange(1, M):
+        for channel in range(1, M):
             y = TimeFrequencyDecomposition.iSTFT(xmX[channel, :, :].T, xpX[channel, :, :].T, wsz, hop, smt)
             yout[:, channel] = y
 

@@ -264,8 +264,8 @@ class SourceEnhancement(nn.Module):
         self._L = L
 
         # FF Source Enhancement Layer
-        self.ffSe_enc = nn.Linear(self._N, self._N/2)
-        self.ffSe_dec = nn.Linear(self._N/2, self._N)
+        self.ffSe_enc = nn.Linear(self._N, self._N//2)
+        self.ffSe_dec = nn.Linear(self._N//2, self._N)
 
         # Initialize the weights
         self.initialize_module()

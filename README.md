@@ -1,3 +1,8 @@
+
+# MusicSourceSeparation
+Project in Spatial Signal Processing course
+
+cloned from:
 # Singing Voice Separation via Recurrent Inference and Skip-Filtering connections
 
 Support material and source code for the method described in : S.I. Mimilakis, K. Drossos, J.F. Santos, G. Schuller, T. Virtanen, Y. Bengio, "Monaural Singing Voice Separation with Skip-Filtering Connections and Recurrent Inference of Time-Frequency Mask", in arXiv:1711.01437 [cs.SD], Nov. 2017.

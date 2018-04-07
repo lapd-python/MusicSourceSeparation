@@ -452,7 +452,7 @@ def test_eval_shunit(nnet, B, T, N, L, wsz, hop):
             vs_hat, mask = nnet[2](H_j_dec, mx[batch * B: (batch+1)*B, :, :])
             y_out_orig = nnet[3](vs_hat)
             y_out_shunit = nnet[4](vs_hat)
-            y_out = np.multiply(y_out_orig, y_out_shunit)
+            y_out = y_out_orig * y_out_shunit
             vx_hat[batch * B: (batch+1)*B, :, :] = y_out.data.cpu().numpy()
 
         # Final reshaping

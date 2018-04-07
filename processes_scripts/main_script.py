@@ -219,7 +219,7 @@ def main(training, apply_sparsity):
         decoder.load_state_dict(torch.load('results/results_inference/torch_sps_decoder.pytorch', map_location=lambda storage, loc: storage))
         sp_decoder.load_state_dict(torch.load('results/results_inference/torch_sps_sp_decoder.pytorch', map_location=lambda storage, loc: storage))
         source_enhancement.load_state_dict(torch.load('results/results_inference/torch_sps_se.pytorch', map_location=lambda storage, loc: storage))
-        source_enhancement_shunit.load_state_dict(torch.load('results/results_inference/torch_sps_se_shunit.pytorch', map_location=lambda storage, loc: storage))
+        source_enhancement_shunit.load_state_dict(torch.load('results/torch_sps_se_shunit_7.pytorch', map_location=lambda storage, loc: storage))
         print('-------------      Done        -------------')
 
     return encoder, decoder, sp_decoder, source_enhancement, source_enhancement_shunit
@@ -227,7 +227,7 @@ def main(training, apply_sparsity):
 
 if __name__ == '__main__':
     os.chdir('/home/shunith/MusicSourceSeparation')
-    training = True         # Whether to train or test the trained model (requires the optimized parameters)
+    training = False         # Whether to train or test the trained model (requires the optimized parameters)
     apply_sparsity = True    # Whether to apply a sparse penalty or not
 
     sfiltnet = main(training, apply_sparsity)
